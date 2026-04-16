@@ -192,6 +192,23 @@ def order_detail(order_id):
     return render_template('shop/order_detail.html', order=order)
 
 
+@shop_bp.route('/orders/<int:order_id>/invoice')
+@login_required
+def order_invoice_print(order_id):
+    order = Order.get_by_id(order_id)
+    if not order:
+        flash('Không tìm thấy đơn hàng.', 'danger')
+        return redirect(url_for('shop.orders'))
+    if str(order.user_id) != str(current_user.id) and not current_user.is_staff:
+        flash('Bạn không có quyền xem hóa đơn này.', 'danger')
+        return redirect(url_for('shop.orders'))
+    return render_template(
+        'invoice/order.html',
+        order=order,
+        back_url=url_for('shop.order_detail', order_id=order.id),
+    )
+
+
 @shop_bp.route('/review/<int:book_id>', methods=['POST'])
 @login_required
 def add_review(book_id):

@@ -153,6 +153,21 @@ def order_detail(order_id):
     return render_template('admin/order_detail.html', order=order)
 
 
+@admin_bp.route('/orders/<int:order_id>/invoice')
+@login_required
+@staff_required
+def order_invoice(order_id):
+    order = Order.get_by_id(order_id)
+    if not order:
+        flash('Không tìm thấy đơn hàng.', 'danger')
+        return redirect(url_for('admin.orders'))
+    return render_template(
+        'invoice/order.html',
+        order=order,
+        back_url=url_for('admin.order_detail', order_id=order.id),
+    )
+
+
 @admin_bp.route('/orders/<int:order_id>/update-status', methods=['POST'])
 @login_required
 @staff_required

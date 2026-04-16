@@ -2,15 +2,43 @@ import os
 import json
 from flask import Blueprint, request, jsonify
 from flask_login import current_user
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from app.models.book import Book
 from app import supabase
 import anthropic
 
 api_bp = Blueprint('api', __name__)
+
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
+
+
+def _register_limiter(state):
+    limiter.init_app(state.app)
+
+
+api_bp.record(_register_limiter)
+
 ai_client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
 
 
+def _build_recommend_system_prompt(books_context_lines):
+    return """Bạn là trợ lý tư vấn sách tại BookStore (nhà sách trực tuyến tại Việt Nam).
+
+Nhiệm vụ:
+- Lắng nghe nhu cầu, sở thích hoặc tình huống của khách (ví dụ: muốn học quản lý thời gian, tìm sách cho trẻ 8 tuổi, thích tiểu thuyết nhẹ nhàng).
+- Gợi ý sách phù hợp **chỉ** từ danh sách bên dưới. Không bịa thêm tựa sách không có trong danh sách.
+- Trả lời bằng tiếng Việt tự nhiên, như nhân viên tư vấn: ngắn gọn ở đoạn mở đầu, sau đó có thể liệt kê 2–5 gợi ý với lý do ngắn (một câu mỗi cuốn).
+- Nếu không có sách phù hợp trong danh sách, hãy nói thật và gợi ý khách thử mô tả thêm (thể loại, độ tuổi, mục tiêu đọc).
+
+Giọng điệu: thân thiện, lịch sự, không rườm rà; tránh câu mở đầu kiểu máy dịch như "Dựa trên yêu cầu của bạn" nếu có thể thay bằng câu đời thường hơn.
+
+Danh sách sách hiện có:
+""" + "\n".join(books_context_lines)
+
+
 @api_bp.route('/ai/recommend', methods=['POST'])
+@limiter.limit('30 per minute')
 def ai_recommend():
     """AI book recommendation based on user preferences"""
     data = request.json or {}
@@ -19,20 +47,13 @@ def ai_recommend():
     if not user_input:
         return jsonify({'error': 'Vui lòng nhập yêu cầu'}), 400
 
-    # Get available books for context
     books = Book.get_all(per_page=50)
     books_context = [
-        f"- {b.title} ({b.author}) - {b.category_name} - {b.price:,.0f}đ"
+        f"- {b.title} ({b.author}) — {b.category_name} — {b.price:,.0f}đ"
         for b in books[:30]
     ]
 
-    system_prompt = """Bạn là trợ lý tư vấn sách thông minh cho nhà sách BookStore. 
-    Hãy giúp khách hàng tìm kiếm và gợi ý sách phù hợp với nhu cầu của họ.
-    Trả lời bằng tiếng Việt, thân thiện và hữu ích.
-    Chỉ gợi ý những sách có trong danh sách được cung cấp.
-    
-    Danh sách sách hiện có:
-    """ + "\n".join(books_context)
+    system_prompt = _build_recommend_system_prompt(books_context)
 
     try:
         message = ai_client.messages.create(
@@ -42,16 +63,21 @@ def ai_recommend():
             messages=[{"role": "user", "content": user_input}]
         )
         return jsonify({'response': message.content[0].text})
-    except Exception as e:
+    except Exception:
         return jsonify({'error': 'Không thể kết nối AI. Vui lòng thử lại.'}), 500
 
 
 @api_bp.route('/ai/summarize/<int:book_id>', methods=['GET'])
+@limiter.limit('60 per minute')
 def ai_summarize(book_id):
-    """AI summarize book description"""
+    """AI summarize book description (cached in DB when columns exist)."""
+    refresh = request.args.get('refresh', '').lower() in ('1', 'true', 'yes')
     book = Book.get_by_id(book_id)
     if not book or not book.description:
         return jsonify({'error': 'Không có mô tả sách'}), 404
+
+    if not refresh and book.ai_summary_cache_fresh():
+        return jsonify({'summary': book.ai_summary, 'cached': True})
 
     try:
         message = ai_client.messages.create(
@@ -59,15 +85,22 @@ def ai_summarize(book_id):
             max_tokens=200,
             messages=[{
                 "role": "user",
-                "content": f"Tóm tắt ngắn gọn (3-4 câu) nội dung cuốn sách này bằng tiếng Việt:\n\n{book.description}"
+                "content": (
+                    "Hãy tóm tắt nội dung cuốn sách sau bằng tiếng Việt, "
+                    "3–4 câu, văn phong tự nhiên, dễ đọc (tránh liệt kê máy móc):\n\n"
+                    f"{book.description}"
+                )
             }]
         )
-        return jsonify({'summary': message.content[0].text})
-    except Exception as e:
+        text = message.content[0].text
+        Book.save_ai_summary(book_id, text)
+        return jsonify({'summary': text, 'cached': False})
+    except Exception:
         return jsonify({'error': 'Không thể tóm tắt'}), 500
 
 
 @api_bp.route('/ai/review-sentiment/<int:book_id>', methods=['GET'])
+@limiter.limit('30 per minute')
 def ai_review_sentiment(book_id):
     """Analyze sentiment of book reviews"""
     try:
@@ -86,11 +119,15 @@ def ai_review_sentiment(book_id):
             max_tokens=300,
             messages=[{
                 "role": "user",
-                "content": f"Phân tích tổng quan các đánh giá sau cho cuốn sách và cho biết điểm mạnh, điểm yếu theo ý kiến độc giả (trả lời tiếng Việt, ngắn gọn):\n\n{reviews_text}"
+                "content": (
+                    "Dựa trên các đánh giá sau, hãy tóm tắt ngắn gọn bằng tiếng Việt: "
+                    "điểm mạnh, điểm cần lưu ý theo ý kiến độc giả. Không cần chào hỏi dài.\n\n"
+                    f"{reviews_text}"
+                )
             }]
         )
         return jsonify({'analysis': message.content[0].text})
-    except Exception as e:
+    except Exception:
         return jsonify({'error': 'Không thể phân tích'}), 500
 
 

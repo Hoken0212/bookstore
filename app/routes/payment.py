@@ -8,6 +8,7 @@ import qrcode
 import io
 import base64
 import requests
+from requests.exceptions import RequestException, Timeout
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from app.models.order import Order
@@ -80,10 +81,14 @@ def create_momo_payment(order_id, amount, order_code):
 
     try:
         response = requests.post(MOMO_ENDPOINT, json=payload, timeout=10)
-        result = response.json()
-        return result
-    except Exception as e:
-        return {'resultCode': -1, 'message': str(e)}
+        response.raise_for_status()
+        return response.json()
+    except Timeout:
+        return {'resultCode': -1, 'message': 'timeout', '_gateway': 'timeout'}
+    except RequestException as e:
+        return {'resultCode': -1, 'message': str(e), '_gateway': 'connection'}
+    except ValueError:
+        return {'resultCode': -1, 'message': 'invalid_response', '_gateway': 'parse'}
 
 
 def create_zalopay_payment(order_id, amount, order_code):
@@ -113,10 +118,14 @@ def create_zalopay_payment(order_id, amount, order_code):
 
     try:
         response = requests.post(ZALOPAY_ENDPOINT, data=params, timeout=10)
-        result = response.json()
-        return result
-    except Exception as e:
-        return {'return_code': -1, 'return_message': str(e)}
+        response.raise_for_status()
+        return response.json()
+    except Timeout:
+        return {'return_code': -1, 'return_message': 'timeout', '_gateway': 'timeout'}
+    except RequestException as e:
+        return {'return_code': -1, 'return_message': str(e), '_gateway': 'connection'}
+    except ValueError:
+        return {'return_code': -1, 'return_message': 'invalid_response', '_gateway': 'parse'}
 
 
 @payment_bp.route('/process/<int:order_id>/<method>')
@@ -127,10 +136,11 @@ def process(order_id, method):
         flash('Không tìm thấy đơn hàng.', 'danger')
         return redirect(url_for('shop.orders'))
 
+    retry_url = url_for('payment.process', order_id=order.id, method=method)
+
     if method == 'momo':
         result = create_momo_payment(order_id, order.total_amount, order.order_code)
         if result.get('resultCode') == 0 and result.get('payUrl'):
-            # Generate QR for the payment URL
             qr_data = result['payUrl']
             qr_base64 = generate_qr_base64(qr_data)
             return render_template('shop/payment_qr.html',
@@ -138,17 +148,30 @@ def process(order_id, method):
                                    method='momo',
                                    payment_url=result['payUrl'],
                                    qr_base64=qr_base64,
-                                   deeplink=result.get('deeplink', ''))
+                                   deeplink=result.get('deeplink', ''),
+                                   payment_warning=None,
+                                   retry_url=retry_url)
+
+        gw = result.get('_gateway')
+        if gw == 'timeout':
+            warn = 'Cổng MoMo không phản hồi kịp (timeout). Bạn có thể nhấn «Thử lại» hoặc dùng mã QR dự phòng bên dưới.'
+        elif gw == 'connection':
+            warn = 'Không kết nối được tới MoMo. Kiểm tra mạng, nhấn «Thử lại», hoặc dùng mã QR dự phòng.'
+        elif gw == 'parse':
+            warn = 'Phản hồi từ MoMo không hợp lệ. Thử lại sau hoặc dùng mã QR dự phòng.'
         else:
-            # Fallback: show static MoMo QR with phone number
-            momo_qr_content = f"2|99|{MOMO_PHONE}|BookStore|{order.order_code}|0"
-            qr_base64 = generate_qr_base64(momo_qr_content)
-            return render_template('shop/payment_qr.html',
-                                   order=order,
-                                   method='momo',
-                                   payment_url='',
-                                   qr_base64=qr_base64,
-                                   phone=MOMO_PHONE)
+            warn = result.get('message') or 'Không tạo được link thanh toán MoMo. Bạn có thể thử lại hoặc quét mã QR dự phòng.'
+
+        momo_qr_content = f"2|99|{MOMO_PHONE}|BookStore|{order.order_code}|0"
+        qr_base64 = generate_qr_base64(momo_qr_content)
+        return render_template('shop/payment_qr.html',
+                               order=order,
+                               method='momo',
+                               payment_url='',
+                               qr_base64=qr_base64,
+                               phone=MOMO_PHONE,
+                               payment_warning=warn,
+                               retry_url=retry_url)
 
     elif method == 'zalopay':
         result = create_zalopay_payment(order_id, order.total_amount, order.order_code)
@@ -158,15 +181,28 @@ def process(order_id, method):
                                    order=order,
                                    method='zalopay',
                                    payment_url=result['order_url'],
-                                   qr_base64=qr_base64)
+                                   qr_base64=qr_base64,
+                                   payment_warning=None,
+                                   retry_url=retry_url)
+
+        gw = result.get('_gateway')
+        if gw == 'timeout':
+            warn = 'Cổng ZaloPay không phản hồi kịp (timeout). Nhấn «Thử lại» hoặc dùng mã QR dự phòng.'
+        elif gw == 'connection':
+            warn = 'Không kết nối được tới ZaloPay. Kiểm tra mạng hoặc thử lại.'
+        elif gw == 'parse':
+            warn = 'Phản hồi từ ZaloPay không hợp lệ. Thử lại sau.'
         else:
-            # Fallback static ZaloPay info
-            qr_base64 = generate_qr_base64(f"ZALOPAY|{ZALOPAY_APP_ID}|{order.order_code}|{int(order.total_amount)}")
-            return render_template('shop/payment_qr.html',
-                                   order=order,
-                                   method='zalopay',
-                                   payment_url='',
-                                   qr_base64=qr_base64)
+            warn = result.get('return_message') or 'Không tạo được link thanh toán ZaloPay. Thử lại hoặc dùng mã QR dự phòng.'
+
+        qr_base64 = generate_qr_base64(f"ZALOPAY|{ZALOPAY_APP_ID}|{order.order_code}|{int(order.total_amount)}")
+        return render_template('shop/payment_qr.html',
+                               order=order,
+                               method='zalopay',
+                               payment_url='',
+                               qr_base64=qr_base64,
+                               payment_warning=warn,
+                               retry_url=retry_url)
 
     flash('Phương thức thanh toán không hợp lệ.', 'danger')
     return redirect(url_for('shop.order_detail', order_id=order_id))

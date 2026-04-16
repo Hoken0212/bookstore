@@ -129,8 +129,13 @@ class Order:
 
     def update_status(self, status):
         try:
-            supabase.table('orders').update({'status': status}).eq('id', self.id).execute()
+            payload = {'status': status}
+            if status == 'paid':
+                payload['payment_status'] = 'paid'
+            supabase.table('orders').update(payload).eq('id', self.id).execute()
             self.status = status
+            if status == 'paid':
+                self.payment_status = 'paid'
             return True
         except Exception:
             return False
