@@ -9,7 +9,6 @@ load_dotenv()
 login_manager = LoginManager()
 supabase: Client = None
 
-
 def create_app():
     app = Flask(__name__)
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
@@ -37,12 +36,14 @@ def create_app():
     from app.routes.admin import admin_bp
     from app.routes.api import api_bp
     from app.routes.payment import payment_bp
+    from app.routes.ai import ai_bp  # <-- ĐÃ THÊM DÂY KẾT NỐI BỘ NÃO AI 
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(shop_bp, url_prefix='/')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(payment_bp, url_prefix='/payment')
+    app.register_blueprint(ai_bp, url_prefix='/ai')  # <-- ĐÃ CẮM DÂY AI VÀO HỆ THỐNG
 
     @app.route('/health')
     def health():
