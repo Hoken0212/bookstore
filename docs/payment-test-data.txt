@@ -1,0 +1,63 @@
+MoMo SANDBOX / UAT
+==================
+
+1) MoMo ATM / NAPAS - case thanh cong
+- So the: 9704000000000018
+- Ngay phat hanh / han: 03/07
+- Ten chu the: NGUYEN VAN A
+- So dien thoai: 0901234567
+
+2) MoMo ATM / NAPAS - cac case loi
+- The khoa: 9704000000000026
+- Khong du tien: 9704000000000034
+- Vuot han muc: 9704000000000042
+- Cac thong tin khac giu nguyen:
+  Ten chu the: NGUYEN VAN A
+  Ngay phat hanh / han: 03/07
+  So dien thoai: 0901234567
+
+3) MoMo the quoc te - vi du test
+- So the: 5200000000001096
+- Ten chu the: NGUYEN VAN A
+- Han: 05/26
+- CVC: 111
+
+4) MoMo vi test
+- Mat khau app test: 000000
+- OTP dang ky / xac thuc vi test: OTP
+- Luu y: luong ATM / NAPAS khong co mot ma OTP cong khai co dinh de xac nhan chac chan nhu ZaloPay.
+
+
+ZALOPAY SANDBOX
+===============
+
+1) OTP / vi sandbox
+- Ma xac minh dang ky: 111111
+
+2) ZaloPay the tin dung - case thanh cong
+- So the: 4111111111111111
+- Ten chu the: NGUYEN VAN A
+- Han: 01/25
+- CVV: 123
+
+3) ZaloPay ATM - case thanh cong
+- So the: 9704540000000062
+- Ten chu the: NGUYEN VAN A
+- Member since: 10/18
+
+4) ZaloPay ATM - cac case loi
+- The mat / loi: 9704540000000013
+- Timeout: 9704540000000039
+- Het tien: 9704540000000047
+- Ten chu the: NGUYEN VAN A
+- Member since: 10/18
+
+
+GHI CHU
+=======
+- MoMo:
+  + requestType=payWithATM -> form the ATM / NAPAS
+  + requestType=captureWallet -> man QR / vi MoMo
+- ZaloPay:
+  + OTP dang ky sandbox: 111111
+- Neu test tren localhost thi callback/IPN co the khong day du nhu production.

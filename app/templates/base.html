@@ -206,18 +206,24 @@
         .nav-dropdown {
             position: relative;
         }
+        /* Cầu vô hình: khoảng giữa nút và menu không còn "lỗ hổng" — chuột rê xuống không mất hover */
         .nav-dropdown-menu {
             position: absolute;
             top: 100%;
             right: 0;
+            margin-top: 0;
+            padding-top: 8px;
+            background: transparent;
+            border-radius: 12px;
+            min-width: 200px;
+            display: none;
+            z-index: 1100;
+        }
+        .nav-dropdown-menu-inner {
             background: white;
             border-radius: 12px;
             box-shadow: var(--shadow-hover);
-            min-width: 200px;
             padding: 8px;
-            display: none;
-            z-index: 100;
-            margin-top: 6px;
         }
         .nav-dropdown:hover .nav-dropdown-menu { display: block; }
 
@@ -375,6 +381,7 @@
             bottom: 96px;
             right: 28px;
             width: 360px;
+            height: min(520px, calc(100vh - 140px));
             max-height: 520px;
             background: white;
             border-radius: 20px;
@@ -423,7 +430,9 @@
 
         .ai-chat-messages {
             flex: 1;
+            min-height: 0;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 16px;
             display: flex;
             flex-direction: column;
@@ -456,16 +465,20 @@
         }
 
         .ai-chat-input {
-            padding: 12px;
+            flex-shrink: 0;
+            padding: 12px 14px 14px;
             border-top: 1px solid var(--border);
+            background: white;
             display: flex;
-            gap: 8px;
+            align-items: center;
+            gap: 10px;
         }
         .ai-chat-input input {
             flex: 1;
-            padding: 10px 14px;
+            min-width: 0;
+            padding: 10px 16px;
             border: 1px solid var(--border);
-            border-radius: 24px;
+            border-radius: 22px;
             font-family: 'DM Sans', sans-serif;
             font-size: 0.88rem;
             outline: none;
@@ -603,6 +616,7 @@
                             <i class="fas fa-chevron-down" style="font-size:0.7rem"></i>
                         </a>
                         <div class="nav-dropdown-menu">
+                            <div class="nav-dropdown-menu-inner">
                             <a href="{{ url_for('auth.profile') }}" class="dropdown-item">
                                 <i class="fas fa-user"></i> Tài khoản
                             </a>
@@ -619,6 +633,7 @@
                             <a href="{{ url_for('auth.logout') }}" class="dropdown-item" style="color:#dc3545">
                                 <i class="fas fa-sign-out-alt"></i> Đăng xuất
                             </a>
+                            </div>
                         </div>
                     </div>
                 {% else %}
