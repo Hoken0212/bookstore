@@ -1,10 +1,13 @@
 import os
+from pathlib import Path
 from flask import Flask
 from flask_login import LoginManager
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-load_dotenv()
+# Luôn nạp .env trong thư mục project (bookstore/), không phụ thuộc cwd khi chạy `python run.py` từ thư mục khác
+_env_path = Path(__file__).resolve().parent.parent / '.env'
+load_dotenv(_env_path)
 
 login_manager = LoginManager()
 supabase: Client = None

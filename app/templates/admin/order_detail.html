@@ -10,7 +10,10 @@
             Đặt lúc: {{ order.created_at[:16].replace('T',' ') if order.created_at else '—' }}
         </p>
     </div>
-    <div class="page-header-actions">
+    <div class="page-header-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="{{ url_for('admin.order_invoice', order_id=order.id) }}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">
+            <i class="fas fa-print"></i> In hóa đơn
+        </a>
         <a href="{{ url_for('admin.orders') }}" class="btn btn-outline btn-sm">
             <i class="fas fa-arrow-left"></i> Quay lại
         </a>

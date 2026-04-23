@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from app import supabase
 
 
@@ -23,11 +25,37 @@ class Book:
         self.is_featured = data.get('is_featured', False)
         self.is_active = data.get('is_active', True)
         self.created_at = data.get('created_at')
+        self.ai_summary = data.get('ai_summary') or ''
+        self.ai_summary_at = data.get('ai_summary_at')
+
+    def ai_summary_cache_fresh(self, ttl_days=7):
+        """True if cached AI summary exists and is within TTL (requires DB columns)."""
+        if not self.ai_summary or not self.ai_summary_at:
+            return False
+        try:
+            raw = str(self.ai_summary_at).replace('Z', '+00:00')
+            ts = datetime.fromisoformat(raw)
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            return datetime.now(timezone.utc) - ts < timedelta(days=ttl_days)
+        except Exception:
+            return False
+
+    @staticmethod
+    def save_ai_summary(book_id, summary_text):
+        try:
+            supabase.table('books').update({
+                'ai_summary': summary_text,
+                'ai_summary_at': datetime.now(timezone.utc).isoformat(),
+            }).eq('id', book_id).execute()
+            return True
+        except Exception:
+            return False
 
     @property
     def discount_percent(self):
         if self.original_price and self.original_price > self.price:
-            return int((1 - self.price / self.original_price) * 100)
+            return round((1 - self.price / self.original_price) * 100)
         return 0
 
     @staticmethod

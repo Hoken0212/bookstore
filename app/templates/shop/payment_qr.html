@@ -49,9 +49,47 @@
         color: var(--text-light);
     }
 
-    .qr-section {
-        padding: 28px;
+    .pay-browser-first {
+        padding: 18px 22px;
         text-align: center;
+        background: linear-gradient(180deg, #f7f7ff 0%, #fff 55%);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .btn-pay-main {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        padding: 16px 20px;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 14px;
+        text-decoration: none;
+        background: var(--accent);
+        color: white !important;
+        border: none;
+        box-shadow: 0 8px 24px rgba(233, 69, 96, 0.35);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .btn-pay-main:hover {
+        transform: translateY(-2px);
+        color: white !important;
+        box-shadow: 0 12px 28px rgba(233, 69, 96, 0.45);
+    }
+
+    .qr-section {
+        padding: 24px 28px 28px;
+        text-align: center;
+    }
+
+    .qr-section h3 {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-light);
+        margin-bottom: 16px;
     }
 
     .qr-wrapper {
@@ -60,59 +98,20 @@
         background: white;
         border: 2px solid var(--border);
         border-radius: 16px;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
         box-shadow: var(--shadow);
     }
 
     .qr-wrapper img {
         display: block;
-        width: 200px;
-        height: 200px;
+        width: 180px;
+        height: 180px;
     }
 
     .qr-label {
-        font-size: 0.88rem;
+        font-size: 0.82rem;
         color: var(--text-light);
-        margin-bottom: 20px;
-    }
-
-    .payment-steps {
-        background: var(--cream);
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin-top: 16px;
-        text-align: left;
-    }
-
-    .payment-steps h4 {
-        font-size: 0.88rem;
-        font-weight: 600;
         margin-bottom: 12px;
-        color: var(--text);
-    }
-
-    .payment-step {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        margin-bottom: 8px;
-        font-size: 0.85rem;
-        color: var(--text-light);
-    }
-
-    .step-num {
-        width: 20px;
-        height: 20px;
-        background: var(--primary);
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        font-weight: 700;
-        flex-shrink: 0;
-        margin-top: 1px;
     }
 
     .payment-actions {
@@ -120,6 +119,7 @@
         border-top: 1px solid var(--border);
         display: flex;
         gap: 10px;
+        flex-wrap: wrap;
     }
 
     .timer-ring {
@@ -132,11 +132,24 @@
         padding: 6px 14px;
         border-radius: 20px;
         font-size: 0.82rem;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
     .spin { animation: spin 2s linear infinite; }
+
+    .link-doc {
+        color: var(--accent);
+        text-decoration: underline;
+        font-size: 0.78rem;
+    }
+
+    .subtle-note {
+        font-size: 0.78rem;
+        color: var(--text-light);
+        margin-top: 10px;
+        line-height: 1.45;
+    }
 </style>
 {% endblock %}
 
@@ -154,62 +167,69 @@
             <div class="payment-order-code">Đơn hàng: <strong>{{ order.order_code }}</strong></div>
         </div>
 
-        <div class="qr-section">
-            <div class="timer-ring">
-                <i class="fas fa-clock spin"></i>
-                Mã QR có hiệu lực <span id="countdown">15:00</span>
-            </div>
-
-            <div class="qr-wrapper">
-                <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR Code thanh toán">
-            </div>
-
-            <p class="qr-label">Quét mã QR bằng ứng dụng {% if method == 'momo' %}MoMo{% else %}ZaloPay{% endif %}</p>
-
-            {% if payment_url %}
-            <a href="{{ payment_url }}" target="_blank" class="btn btn-primary btn-block">
-                <i class="fas fa-external-link-alt"></i>
-                Mở {% if method == 'momo' %}MoMo{% else %}ZaloPay{% endif %} trực tiếp
-            </a>
-            {% endif %}
-
-            <div class="payment-steps">
-                <h4><i class="fas fa-list-ol"></i> Hướng dẫn thanh toán:</h4>
-                {% if method == 'momo' %}
-                <div class="payment-step">
-                    <div class="step-num">1</div>
-                    <div>Mở ứng dụng <strong>MoMo</strong> trên điện thoại</div>
-                </div>
-                <div class="payment-step">
-                    <div class="step-num">2</div>
-                    <div>Chọn <strong>Quét mã QR</strong> hoặc nhấn biểu tượng camera</div>
-                </div>
-                <div class="payment-step">
-                    <div class="step-num">3</div>
-                    <div>Quét mã QR bên trên và xác nhận thanh toán</div>
-                </div>
-                <div class="payment-step">
-                    <div class="step-num">4</div>
-                    <div>Nhập nội dung: <strong>{{ order.order_code }}</strong> và thanh toán</div>
-                </div>
-                {% else %}
-                <div class="payment-step">
-                    <div class="step-num">1</div>
-                    <div>Mở ứng dụng <strong>ZaloPay</strong> trên điện thoại</div>
-                </div>
-                <div class="payment-step">
-                    <div class="step-num">2</div>
-                    <div>Chọn <strong>Quét QR</strong> để thanh toán</div>
-                </div>
-                <div class="payment-step">
-                    <div class="step-num">3</div>
-                    <div>Quét mã QR và xác nhận thanh toán <strong>{{ "{:,.0f}".format(order.total_amount) }}đ</strong></div>
+        {% if payment_warning %}
+        <div style="padding:14px 22px 0">
+            <div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;padding:10px 14px;border-radius:12px;font-size:0.88rem;text-align:left">
+                <strong><i class="fas fa-exclamation-triangle"></i></strong> {{ payment_warning }}
+                {% if retry_url %}
+                <div style="margin-top:10px">
+                    <a href="{{ retry_url }}" class="btn btn-primary btn-sm" style="display:inline-flex;text-decoration:none">
+                        <i class="fas fa-redo"></i> Thử lại
+                    </a>
                 </div>
                 {% endif %}
             </div>
         </div>
+        {% endif %}
+
+        {% if payment_url %}
+        <div class="pay-browser-first">
+            <a href="{{ payment_url }}" target="_blank" rel="noopener noreferrer" class="btn-pay-main">
+                <i class="fas fa-credit-card"></i>
+                Mở trang thanh toán
+            </a>
+            <div class="subtle-note">
+                Mở trong tab mới để tiếp tục thanh toán.
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="qr-section">
+            <div class="timer-ring">
+                <i class="fas fa-clock spin"></i>
+                Phiên thanh toán (ước tính) <span id="countdown">15:00</span>
+            </div>
+
+            <h3>{% if payment_url %}Mã QR{% else %}QR dự phòng (sandbox){% endif %}</h3>
+
+            <div class="qr-wrapper">
+                <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR thanh toán">
+            </div>
+
+            <p class="qr-label">
+                {% if payment_url %}
+                Quét để mở trang thanh toán trên điện thoại.
+                {% else %}
+                Dùng khi cổng thanh toán tạm thời không phản hồi.
+                {% endif %}
+            </p>
+
+            {% if payment_url %}
+            <a href="{{ payment_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-block" style="margin-bottom:16px">
+                <i class="fas fa-external-link-alt"></i>
+                Mở lại trang cổng thanh toán
+            </a>
+            {% endif %}
+
+            {# intentionally minimal: hide long guides for cleaner UI #}
+        </div>
 
         <div class="payment-actions">
+            {% if payment_warning and retry_url %}
+            <a href="{{ retry_url }}" class="btn btn-primary" style="flex:1;justify-content:center">
+                <i class="fas fa-redo"></i> Thử lại
+            </a>
+            {% endif %}
             <a href="{{ url_for('shop.order_detail', order_id=order.id) }}" class="btn btn-outline" style="flex:1;justify-content:center">
                 <i class="fas fa-receipt"></i> Xem đơn hàng
             </a>
@@ -225,7 +245,6 @@
 </div>
 
 <script>
-// Countdown timer
 let seconds = 15 * 60;
 const el = document.getElementById('countdown');
 const timer = setInterval(() => {
@@ -240,14 +259,5 @@ const timer = setInterval(() => {
         el.parentElement.style.color = '#991b1b';
     }
 }, 1000);
-
-// Poll payment status every 5 seconds
-const orderId = {{ order.id }};
-let pollCount = 0;
-const pollTimer = setInterval(async () => {
-    pollCount++;
-    if (pollCount > 60) { clearInterval(pollTimer); return; }
-    // In a real app, you'd check payment status via API
-}, 5000);
 </script>
 {% endblock %}

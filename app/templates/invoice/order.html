@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hóa đơn {{ order.order_code }} - BookStore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --accent: #e94560;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            color: var(--ink);
+            background: #f8fafc;
+            padding: 24px;
+            line-height: 1.5;
+        }
+        .sheet {
+            max-width: 720px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            padding: 32px 36px 40px;
+        }
+        .toolbar {
+            max-width: 720px;
+            margin: 0 auto 16px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #fff;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+            text-decoration: none;
+            color: var(--ink);
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .brand {
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 4px;
+        }
+        .doc-title {
+            font-size: 0.85rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 20px;
+        }
+        .meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 24px;
+            margin-bottom: 28px;
+            font-size: 0.9rem;
+        }
+        .meta dt { color: var(--muted); font-size: 0.78rem; margin-bottom: 2px; }
+        .meta dd { font-weight: 600; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+        }
+        .num { text-align: right; white-space: nowrap; }
+        tfoot td {
+            border-bottom: none;
+            font-weight: 700;
+            font-size: 1.05rem;
+            padding-top: 16px;
+        }
+        .total-label { text-align: right; color: var(--muted); font-weight: 500; font-size: 0.9rem; }
+        .footer-note {
+            margin-top: 28px;
+            padding-top: 16px;
+            border-top: 1px dashed var(--border);
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .sheet { box-shadow: none; border-radius: 0; max-width: none; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar no-print">
+        <button type="button" class="btn btn-primary" onclick="window.print()">
+            In hóa đơn
+        </button>
+        {% if back_url %}
+        <a href="{{ back_url }}" class="btn">Quay lại</a>
+        {% endif %}
+    </div>
+
+    <article class="sheet">
+        <div class="brand">BookStore</div>
+        <div class="doc-title">Hóa đơn bán hàng</div>
+
+        <dl class="meta">
+            <div>
+                <dt>Mã đơn hàng</dt>
+                <dd>{{ order.order_code }}</dd>
+            </div>
+            <div>
+                <dt>Ngày đặt</dt>
+                <dd>{{ order.created_at[:19].replace('T',' ') if order.created_at else '—' }}</dd>
+            </div>
+            <div>
+                <dt>Khách hàng</dt>
+                <dd>{{ order.shipping_name or order.user_name or '—' }}</dd>
+            </div>
+            <div>
+                <dt>Điện thoại</dt>
+                <dd>{{ order.shipping_phone or '—' }}</dd>
+            </div>
+            <div style="grid-column:1/-1">
+                <dt>Địa chỉ giao hàng</dt>
+                <dd>{{ order.shipping_address or '—' }}</dd>
+            </div>
+            {% if order.note %}
+            <div style="grid-column:1/-1">
+                <dt>Ghi chú</dt>
+                <dd>{{ order.note }}</dd>
+            </div>
+            {% endif %}
+        </dl>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Sản phẩm</th>
+                    <th class="num">Đơn giá</th>
+                    <th class="num">SL</th>
+                    <th class="num">Thành tiền</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items %}
+                <tr>
+                    <td>{{ item.title }}</td>
+                    <td class="num">{{ "{:,.0f}".format(item.price) }}đ</td>
+                    <td class="num">{{ item.quantity }}</td>
+                    <td class="num">{{ "{:,.0f}".format(item.price * item.quantity) }}đ</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" style="text-align:center;color:var(--muted)">Không có dòng hàng</td></tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" class="total-label">Tổng cộng</td>
+                    <td class="num" style="color:var(--accent)">{{ "{:,.0f}".format(order.total_amount) }}đ</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div style="font-size:0.88rem;color:var(--muted)">
+            Thanh toán:
+            {% if order.payment_method == 'momo' %}MoMo
+            {% elif order.payment_method == 'zalopay' %}ZaloPay
+            {% else %}COD (thanh toán khi nhận hàng){% endif %}
+            · Trạng thái: {{ order.status_label[0] }}
+        </div>
+
+        <p class="footer-note">
+            Hóa đơn điện tử / in từ hệ thống BookStore. Vui lòng giữ lại để đối soát khi cần.
+        </p>
+    </article>
+</body>
+</html>
